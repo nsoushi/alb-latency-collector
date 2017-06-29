@@ -1,0 +1,53 @@
+<source>
+  type elb_log
+  access_key_id     {{ var "AWS_ACCESS_KEY" | default "" }}
+  secret_access_key {{ var "AWS_SECRET_KEY" | default "" }}
+  region            {{ var "AWS_REGION" | default "" }}
+  s3_bucketname     {{ var "S3_BUCKETNAME" | default "" }}
+  s3_prefix         {{ var "S3_PREFIX" | default "" }}
+  timestamp_file    /tmp/elb_last_at.dat
+  refresh_interval  2s
+  tag api.access_log
+</source>
+
+<match api.access_log>
+  type copy
+
+  <store>
+    type record_reformer
+    enable_ruby true
+    tag api.access_log.es
+    <record>
+    @timestamp ${record['time']}
+    </record>
+  </store>
+
+  <store>
+    type stats
+    interval 2s
+    add_tag_suffix stats
+    max ^backend_processing_time$
+    avg ^backend_processing_time$
+    max_suffix .max
+    avg_suffix .avg
+  </store>
+</match>
+
+<match api.access_log.es>
+  type elasticsearch
+  host elasticsearch
+  port 9200
+  type_name api_accesslog
+  include_time_key true
+  flush_interval "1s"
+  logstash_format true
+  logstash_prefix "api.accesslog"
+</match>
+
+<match api.access_log.stats>
+  type mackerel
+  api_key {{ var "MACKEREL_API_KEY" | default "" }}
+  service {{ var "MACKEREL_SERVICE" | default "" }}
+  metrics_name api.${out_key}
+  out_keys backend_processing_time.max,backend_processing_time.avg
+</match>

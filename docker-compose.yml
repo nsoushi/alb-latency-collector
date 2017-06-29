@@ -1,0 +1,34 @@
+version: "3"
+
+services:
+  fluentd:
+    container_name: fluentd
+    build: ./fluentd
+    ports:
+      - 24220:24220
+      - 24224:24224
+    environment:
+      AWS_ACCESS_KEY: {aws_access_key}
+      AWS_SECRET_KEY: {aws_secret_key}
+      AWS_REGION: {aws_region}
+      S3_BUCKETNAME: {s3_bucketname}
+      S3_PREFIX: {s3_prefix}
+      MACKEREL_API_KEY: {mackerel_api_key}
+      MACKEREL_SERVICE: {mackerel_service_name}
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    image: elasticsearch:5
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - ./elasticsearch/data/:/usr/share/elasticsearch/data/
+
+  kibana:
+    image: kibana
+    links:
+      - elasticsearch:elasticsearch
+    ports:
+      - 5601:5601
